@@ -4,57 +4,80 @@ import axios from "axios";
 export default async function handler(req, res) {
   const { token, type } = req.query;
 
-  if (!token) {
-    return res.status(400).json({ success: false, message: "Missing token" });
+  if (!token || !type) {
+    return res.status(400).json({ success: false, message: "Missing token or type" });
   }
 
   try {
-    // 📝 Log environment variable
-    console.log("🔑 MONDAY_TOKEN from env:", process.env.MONDAY_TOKEN?.slice(0, 20) + "...");
-
-    // 📝 Log request details
     console.log("➡️ Incoming unsubscribe request:", { token, type });
 
-    // Example GraphQL mutation
-    const query = `
-      mutation update_column($boardId: ID!, $itemId: ID!, $columnId: String!, $value: JSON!) {
+    // 1. Find item by token
+    const findQuery = `
+      query ($boardId: ID!, $columnId: String!, $token: String!) {
+        items_page_by_column_values (
+          board_id: $boardId,
+          columns: [{column_id: $columnId, column_values: [$token]}],
+          limit: 1
+        ) {
+          items { id name }
+        }
+      }
+    `;
+
+    const findRes = await axios.post(
+      "https://api.monday.com/v2",
+      {
+        query: findQuery,
+        variables: {
+          boardId: process.env.BOARD_ID,
+          columnId: process.env.COL_TOKEN_ID,
+          token,
+        },
+      },
+      { headers: { Authorization: process.env.MONDAY_TOKEN } }
+    );
+
+    console.log("📥 Find response:", JSON.stringify(findRes.data, null, 2));
+
+    const items = findRes.data.data?.items_page_by_column_values?.items || [];
+    if (items.length === 0) {
+      return res.status(404).json({ success: false, message: "Token not found in board" });
+    }
+
+    const itemId = items[0].id;
+
+    // 2. Update the correct column
+    const updateQuery = `
+      mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: JSON!) {
         change_column_value(board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) {
           id
         }
       }
     `;
 
-    // Replace with actual itemId resolution logic (simplified here)
-    const variables = {
-      boardId: process.env.BOARD_ID,
-      itemId: 123456789, // placeholder, update with lookup by email/token
-      columnId: type === "marketing" ? process.env.COL_MARKETING_ID : process.env.COL_NEWSLETTER_ID,
-      value: JSON.stringify({ label: "Unsubscribed" }),
-    };
-
-    // 📝 Log outgoing request
-    console.log("📤 Sending request to Monday API with variables:", variables);
-
-    const response = await axios.post(
+    const updateRes = await axios.post(
       "https://api.monday.com/v2",
-      { query, variables },
       {
-        headers: {
-          Authorization: process.env.MONDAY_TOKEN,
+        query: updateQuery,
+        variables: {
+          boardId: process.env.BOARD_ID,
+          itemId,
+          columnId: type === "marketing" ? process.env.COL_MARKETING_ID : process.env.COL_NEWSLETTER_ID,
+          value: JSON.stringify({ label: "Unsubscribed" }),
         },
-      }
+      },
+      { headers: { Authorization: process.env.MONDAY_TOKEN } }
     );
 
-    // 📝 Log Monday response
-    console.log("📥 Monday API response:", JSON.stringify(response.data, null, 2));
+    console.log("📥 Update response:", JSON.stringify(updateRes.data, null, 2));
 
-    if (response.data.errors) {
-      return res.status(500).json({ success: false, message: "Monday API error", errors: response.data.errors });
+    if (updateRes.data.errors) {
+      return res.status(500).json({ success: false, message: "Monday API error", errors: updateRes.data.errors });
     }
 
     return res.status(200).json({ success: true, message: "Unsubscribed successfully" });
   } catch (err) {
-    console.error("❌ Error in unsubscribe handler:", err.message);
+    console.error("❌ Error in unsubscribe handler:", err.message, err.stack);
     return res.status(500).json({ success: false, message: err.message });
   }
 }

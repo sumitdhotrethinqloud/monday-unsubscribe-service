@@ -1,6 +1,9 @@
 {
+  "/api/unsubscribe": "pages/api/unsubscribe.js",
+  "/": "pages/index.html",
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
+  "/unsubscribe": "pages/unsubscribe.html",
   "/_document": "pages/_document.js",
-  "/unsubscribe": "pages/unsubscribe.js"
+  "/404": "pages/404.html"
 }
