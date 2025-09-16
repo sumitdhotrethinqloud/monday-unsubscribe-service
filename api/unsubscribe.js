@@ -1,33 +1,69 @@
-import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import axios from "axios";
 
-export default function UnsubscribePage() {
-  const router = useRouter();
-  const { token } = router.query;
+export default async function handler(req, res) {
+  const { token, type } = req.query;
 
-  const [status, setStatus] = useState("loading");
+  if (!token || !type) {
+    return res.status(400).json({ success: false, message: "Missing token or type" });
+  }
 
-  useEffect(() => {
-    if (!token) return;
+  try {
+    // 🔑 Fetch env vars from Vercel
+    const apiToken = process.env.MONDAY_API_TOKEN;
+    const boardId = process.env.BOARD_ID;
 
-    // By default we unsubscribe from BOTH (you can customize)
-    fetch(`/api/unsubscribe?token=${token}&type=both`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          setStatus("success");
-        } else {
-          setStatus("error");
+    // Example: decode token (in reality, you’d store mapping in monday column)
+    // For now assume token is the itemId
+    const itemId = token;
+
+    // Decide which columns to update
+    const columnValues = {};
+    if (type === "marketing") {
+      columnValues["marketing"] = { label: "Unsubscribed" };
+    } else if (type === "newsletters") {
+      columnValues["newsletters"] = { label: "Unsubscribed" };
+    } else if (type === "both") {
+      columnValues["marketing"] = { label: "Unsubscribed" };
+      columnValues["newsletters"] = { label: "Unsubscribed" };
+    }
+
+    const mutation = `
+      mutation change($boardId: ID!, $itemId: ID!, $columnValues: JSON!) {
+        change_multiple_column_values(
+          board_id: $boardId,
+          item_id: $itemId,
+          column_values: $columnValues
+        ) {
+          id
         }
-      })
-      .catch(() => setStatus("error"));
-  }, [token]);
+      }
+    `;
 
-  return (
-    <div style={{ fontFamily: "sans-serif", padding: "2rem", textAlign: "center" }}>
-      {status === "loading" && <h2>Processing your request…</h2>}
-      {status === "success" && <h2>You’ve been unsubscribed ✅</h2>}
-      {status === "error" && <h2>Invalid or expired link ❌</h2>}
-    </div>
-  );
+    const response = await axios.post(
+      "https://api.monday.com/v2",
+      {
+        query: mutation,
+        variables: {
+          boardId,
+          itemId,
+          columnValues: JSON.stringify(columnValues),
+        },
+      },
+      {
+        headers: {
+          Authorization: apiToken,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (response.data.errors) {
+      return res.status(500).json({ success: false, message: "Monday API error", errors: response.data.errors });
+    }
+
+    return res.status(200).json({ success: true, message: `Unsubscribed from ${type}` });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
 }
