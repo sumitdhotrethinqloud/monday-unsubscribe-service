@@ -4,47 +4,39 @@ import { useState } from "react";
 export default function UnsubscribePage() {
   const router = useRouter();
   const { token } = router.query;
+  const [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const [status, setStatus] = useState(null);
-
-  const handleUnsubscribe = async (type) => {
-    setStatus("loading");
+  async function handleUnsubscribe(type) {
+    setLoading(true);
     try {
       const res = await fetch(`/api/unsubscribe?token=${token}&type=${type}`);
       const data = await res.json();
       if (data.success) {
-        setStatus(`success-${type}`);
+        setStatus("success");
       } else {
         setStatus("error");
       }
-    } catch (e) {
+    } catch {
       setStatus("error");
+    } finally {
+      setLoading(false);
     }
-  };
+  }
 
   return (
     <div style={{ fontFamily: "sans-serif", padding: "2rem", textAlign: "center" }}>
-      <h1>Manage Your Email Preferences</h1>
-      {!token && <h2>Invalid link ❌</h2>}
-
-      {token && !status && (
+      <h1>Email Preferences</h1>
+      {!status && (
         <>
-          <p>Select which emails you’d like to unsubscribe from:</p>
-          <button onClick={() => handleUnsubscribe("marketing")}>Unsubscribe Marketing</button>
-          <button onClick={() => handleUnsubscribe("newsletters")}>Unsubscribe Newsletters</button>
-          <button onClick={() => handleUnsubscribe("both")}>Unsubscribe All</button>
+          <p>Select what you want to unsubscribe from:</p>
+          <button onClick={() => handleUnsubscribe("marketing")} disabled={loading}>Marketing</button>
+          <button onClick={() => handleUnsubscribe("newsletters")} disabled={loading}>Newsletters</button>
+          <button onClick={() => handleUnsubscribe("both")} disabled={loading}>Both</button>
         </>
       )}
-
-      {status === "loading" && <h2>Processing your request…</h2>}
-      {status?.startsWith("success") && (
-        <h2>
-          {status === "success-marketing" && "You unsubscribed from Marketing ✅"}
-          {status === "success-newsletters" && "You unsubscribed from Newsletters ✅"}
-          {status === "success-both" && "You unsubscribed from All Emails ✅"}
-        </h2>
-      )}
-      {status === "error" && <h2>Something went wrong ❌</h2>}
+      {status === "success" && <h2>✅ You’ve been unsubscribed</h2>}
+      {status === "error" && <h2>❌ Invalid or expired link</h2>}
     </div>
   );
 }

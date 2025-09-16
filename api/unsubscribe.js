@@ -1,34 +1,71 @@
 import axios from "axios";
 
+const MONDAY_API_TOKEN = process.env.MONDAY_TOKEN;
+const BOARD_ID = process.env.BOARD_ID;
+const COL_TOKEN_ID = process.env.COL_TOKEN_ID;
+const COL_MARKETING_ID = process.env.COL_MARKETING_ID;
+const COL_NEWSLETTER_ID = process.env.COL_NEWSLETTER_ID;
+const COL_LAST_UNSUB_ID = process.env.COL_LAST_UNSUB_ID;
+
+async function mondayQuery(query, variables = {}) {
+  const res = await axios.post(
+    "https://api.monday.com/v2",
+    { query, variables },
+    { headers: { Authorization: MONDAY_API_TOKEN, "Content-Type": "application/json" } }
+  );
+  return res.data;
+}
+
 export default async function handler(req, res) {
   const { token, type } = req.query;
 
-  if (!token || !type) {
-    return res.status(400).json({ success: false, message: "Missing token or type" });
+  if (!token) {
+    return res.status(400).json({ success: false, message: "Missing token" });
   }
 
   try {
-    // 🔑 Fetch env vars from Vercel
-    const apiToken = process.env.MONDAY_API_TOKEN;
-    const boardId = process.env.BOARD_ID;
+    // 1. Find item by token
+    const query = `
+      query findItem($boardId: ID!, $columnId: String!, $token: String!) {
+        items_page(board_id: $boardId, limit: 100) {
+          items {
+            id
+            name
+            column_values(ids: [$columnId]) {
+              id
+              text
+            }
+          }
+        }
+      }
+    `;
+    const data = await mondayQuery(query, {
+      boardId: BOARD_ID,
+      columnId: COL_TOKEN_ID,
+      token,
+    });
 
-    // Example: decode token (in reality, you’d store mapping in monday column)
-    // For now assume token is the itemId
-    const itemId = token;
+    const item = data.data.items_page.items.find(
+      i => i.column_values[0]?.text === token
+    );
 
-    // Decide which columns to update
-    const columnValues = {};
-    if (type === "marketing") {
-      columnValues["marketing"] = { label: "Unsubscribed" };
-    } else if (type === "newsletters") {
-      columnValues["newsletters"] = { label: "Unsubscribed" };
-    } else if (type === "both") {
-      columnValues["marketing"] = { label: "Unsubscribed" };
-      columnValues["newsletters"] = { label: "Unsubscribed" };
+    if (!item) {
+      return res.status(404).json({ success: false, message: "Invalid token" });
     }
 
+    // 2. Decide updates
+    let updates = {};
+    if (type === "marketing" || type === "both") {
+      updates[COL_MARKETING_ID] = { label: "Unsubscribed" };
+    }
+    if (type === "newsletters" || type === "both") {
+      updates[COL_NEWSLETTER_ID] = { label: "Unsubscribed" };
+    }
+    updates[COL_LAST_UNSUB_ID] = new Date().toISOString();
+
+    // 3. Push update
     const mutation = `
-      mutation change($boardId: ID!, $itemId: ID!, $columnValues: JSON!) {
+      mutation updateColumns($boardId: ID!, $itemId: ID!, $columnValues: JSON!) {
         change_multiple_column_values(
           board_id: $boardId,
           item_id: $itemId,
@@ -38,32 +75,15 @@ export default async function handler(req, res) {
         }
       }
     `;
+    await mondayQuery(mutation, {
+      boardId: BOARD_ID,
+      itemId: item.id,
+      columnValues: JSON.stringify(updates),
+    });
 
-    const response = await axios.post(
-      "https://api.monday.com/v2",
-      {
-        query: mutation,
-        variables: {
-          boardId,
-          itemId,
-          columnValues: JSON.stringify(columnValues),
-        },
-      },
-      {
-        headers: {
-          Authorization: apiToken,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    if (response.data.errors) {
-      return res.status(500).json({ success: false, message: "Monday API error", errors: response.data.errors });
-    }
-
-    return res.status(200).json({ success: true, message: `Unsubscribed from ${type}` });
+    return res.json({ success: true, message: "Unsubscribed successfully" });
   } catch (err) {
-    console.error(err);
+    console.error("Unsubscribe error", err.response?.data || err.message);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 }
