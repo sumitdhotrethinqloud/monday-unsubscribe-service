@@ -46,7 +46,19 @@ export default async function handler(req, res) {
 
     const itemId = items[0].id;
 
-    // 2. Update the correct column
+    // 2. Decide which columns to update
+    let columnsToUpdate = [];
+    if (type === "marketing") {
+      columnsToUpdate.push(process.env.COL_MARKETING_ID);
+    } else if (type === "newsletters") {
+      columnsToUpdate.push(process.env.COL_NEWSLETTER_ID);
+    } else if (type === "both") {
+      columnsToUpdate.push(process.env.COL_MARKETING_ID, process.env.COL_NEWSLETTER_ID);
+    } else {
+      return res.status(400).json({ success: false, message: "Invalid unsubscribe type" });
+    }
+
+    // 3. Run updates
     const updateQuery = `
       mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: JSON!) {
         change_column_value(board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) {
@@ -55,24 +67,26 @@ export default async function handler(req, res) {
       }
     `;
 
-    const updateRes = await axios.post(
-      "https://api.monday.com/v2",
-      {
-        query: updateQuery,
-        variables: {
-          boardId: process.env.BOARD_ID,
-          itemId,
-          columnId: type === "marketing" ? process.env.COL_MARKETING_ID : process.env.COL_NEWSLETTER_ID,
-          value: JSON.stringify({ label: "Unsubscribed" }),
+    for (const columnId of columnsToUpdate) {
+      const updateRes = await axios.post(
+        "https://api.monday.com/v2",
+        {
+          query: updateQuery,
+          variables: {
+            boardId: process.env.BOARD_ID,
+            itemId,
+            columnId,
+            value: JSON.stringify({ label: "Unsubscribed" }),
+          },
         },
-      },
-      { headers: { Authorization: process.env.MONDAY_TOKEN } }
-    );
+        { headers: { Authorization: process.env.MONDAY_TOKEN } }
+      );
 
-    console.log("📥 Update response:", JSON.stringify(updateRes.data, null, 2));
+      console.log(`📥 Update response for column ${columnId}:`, JSON.stringify(updateRes.data, null, 2));
 
-    if (updateRes.data.errors) {
-      return res.status(500).json({ success: false, message: "Monday API error", errors: updateRes.data.errors });
+      if (updateRes.data.errors) {
+        return res.status(500).json({ success: false, message: "Monday API error", errors: updateRes.data.errors });
+      }
     }
 
     return res.status(200).json({ success: true, message: "Unsubscribed successfully" });

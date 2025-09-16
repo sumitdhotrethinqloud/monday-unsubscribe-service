@@ -31,8 +31,9 @@ export default function UnsubscribePage() {
         <>
           <p>Select what you want to unsubscribe from:</p>
           <button onClick={() => handleUnsubscribe("marketing")} disabled={loading}>Marketing</button>
-          <button onClick={() => handleUnsubscribe("newsletters")} disabled={loading}>Newsletters</button>
-          <button onClick={() => handleUnsubscribe("both")} disabled={loading}>Both</button>
+			<button onClick={() => handleUnsubscribe("newsletter")} disabled={loading}>Newsletter</button>
+			<button onClick={() => handleUnsubscribe("both")} disabled={loading}>Both</button>
+
         </>
       )}
       {status === "success" && <h2>✅ You’ve been unsubscribed</h2>}
