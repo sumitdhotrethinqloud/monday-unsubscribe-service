@@ -73,7 +73,7 @@ export default async function handler(req, res) {
     // pick correct column
     let columnId = "";
     if (type === "marketing") columnId = COL_MARKETING_ID;
-    else if (type === "newsletters") columnId = COL_NEWSLETTER_ID;
+    else if (type === "newsletter") columnId = COL_NEWSLETTER_ID;
     else
       return res.status(400).json({
         success: false,
