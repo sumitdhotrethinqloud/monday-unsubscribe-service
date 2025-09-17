@@ -1,4 +1,4 @@
-// api/unsubscribe.js
+// pages/api/unsubscribe.js
 import axios from "axios";
 
 export default async function handler(req, res) {
@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   try {
     console.log("➡️ Incoming unsubscribe request:", { token, type });
 
-    // Hardcoded values for testing
+    // Hardcoded values (replace with env after testing)
     const MONDAY_TOKEN =
       "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjUzNjE2MDE3MCwiYWFpIjoxMSwidWlkIjo3NjkyMjQ3MCwiaWFkIjoiMjAyNS0wNy0wOFQwODo1ODoyNC4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6MjY5NDU4NjMsInJnbiI6ImFwc2UyIn0.T8F8CgM45kPUl4SJKtEr1jjrUGQJQAbY1q3YFNmypIY";
     const BOARD_ID = "2072738911";
@@ -61,25 +61,30 @@ export default async function handler(req, res) {
 
     const itemId = items[0].id;
 
-    // 2. Update the correct column
+    // 2. Build mutations
     const updateQuery = `
-      mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: JSON!) {
-        change_column_value(board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) {
+      mutation changeValues($boardId: ID!, $itemId: ID!, $changes: [ChangeColumnValueInput!]!) {
+        change_multiple_column_values(board_id: $boardId, item_id: $itemId, column_values: $changes) {
           id
         }
       }
     `;
 
-    // pick correct column
-    let columnId = "";
-    if (type === "marketing") columnId = COL_MARKETING_ID;
-    else if (type === "newsletter") columnId = COL_NEWSLETTER_ID;
-    else
-      return res.status(400).json({
-        success: false,
-        message: "Invalid unsubscribe type (use marketing or newsletters)",
-      });
+    let changes = [];
+    if (type === "marketing") {
+      changes.push({ id: COL_MARKETING_ID, value: JSON.stringify({ label: "Unsubscribed" }) });
+    } else if (type === "newsletter") {
+      changes.push({ id: COL_NEWSLETTER_ID, value: JSON.stringify({ label: "Unsubscribed" }) });
+    } else if (type === "both") {
+      changes.push(
+        { id: COL_MARKETING_ID, value: JSON.stringify({ label: "Unsubscribed" }) },
+        { id: COL_NEWSLETTER_ID, value: JSON.stringify({ label: "Unsubscribed" }) }
+      );
+    } else {
+      return res.status(400).json({ success: false, message: "Invalid type" });
+    }
 
+    // 3. Send mutation
     const updateRes = await axios.post(
       "https://api.monday.com/v2",
       {
@@ -87,8 +92,7 @@ export default async function handler(req, res) {
         variables: {
           boardId: BOARD_ID,
           itemId,
-          columnId,
-          value: JSON.stringify({ label: "Unsubscribed" }),
+          changes,
         },
       },
       {
