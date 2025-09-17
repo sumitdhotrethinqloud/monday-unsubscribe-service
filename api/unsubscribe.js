@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     console.log("➡️ Incoming unsubscribe request:", { token, type });
 
     // Hardcoded values (replace with env after testing)
-    const MONDAY_TOKEN = "YOUR_LONG_TOKEN";
+    const MONDAY_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjUzNjE2MDE3MCwiYWFpIjoxMSwidWlkIjo3NjkyMjQ3MCwiaWFkIjoiMjAyNS0wNy0wOFQwODo1ODoyNC4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6MjY5NDU4NjMsInJnbiI6ImFwc2UyIn0.T8F8CgM45kPUl4SJKtEr1jjrUGQJQAbY1q3YFNmypIY";
     const BOARD_ID = "2072738911";
     const COL_TOKEN_ID = "text_mkvtvmk9";
     const COL_MARKETING_ID = "color_mkvpcgta";
