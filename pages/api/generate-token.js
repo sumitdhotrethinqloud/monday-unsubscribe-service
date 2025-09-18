@@ -8,6 +8,12 @@ export default async function handler(req, res) {
       return res.status(405).json({ success: false, message: "Method not allowed" });
     }
 
+// 🔹 Handle webhook verification challenge
+    if (req.body && req.body.challenge) {
+      console.log("🔑 Responding to Monday webhook challenge");
+      return res.status(200).send(req.body.challenge);
+    }
+	
     console.log("📥 Incoming webhook payload:", req.body);
 
     const { event } = req.body;
