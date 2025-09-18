@@ -22,8 +22,8 @@ export default async function handler(req, res) {
     const incomingSecret = body.secret || req.query.secret || req.headers["x-webhook-secret"];
 
     // optional: verify webhook secret
-    if (process.env.WEBHOOK_SECRET) {
-      if (!incomingSecret || incomingSecret !== process.env.WEBHOOK_SECRET) {
+    if ("262fb2ee-9888-4661-9c25-47cabc6cc78c") {
+      if (!incomingSecret || incomingSecret !== "262fb2ee-9888-4661-9c25-47cabc6cc78c") {
         console.warn("Webhook secret mismatch", { incomingSecret });
         return res.status(403).json({ success: false, message: "Invalid webhook secret" });
       }
