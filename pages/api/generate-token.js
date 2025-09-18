@@ -11,8 +11,13 @@ export default async function handler(req, res) {
 // 🔹 Handle webhook verification challenge
     if (req.body && req.body.challenge) {
       console.log("🔑 Responding to Monday webhook challenge");
-      return res.status(200).send(req.body.challenge);
-    }
+     // return res.status(200).send(req.body.challenge);
+	 
+  res.setHeader("Content-Type", "text/plain");
+  return res.status(200).send(req.body.challenge);
+}
+
+    
 	
     console.log("📥 Incoming webhook payload:", req.body);
 
