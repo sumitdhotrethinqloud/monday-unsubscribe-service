@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     const MONDAY_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjUzNjE2MDE3MCwiYWFpIjoxMSwidWlkIjo3NjkyMjQ3MCwiaWFkIjoiMjAyNS0wNy0wOFQwODo1ODoyNC4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6MjY5NDU4NjMsInJnbiI6ImFwc2UyIn0.T8F8CgM45kPUl4SJKtEr1jjrUGQJQAbY1q3YFNmypIY";
     const BOARD_ID = "2072738911";
     //const COL_TOKEN_ID = "text_mkvtvmk9";
-	const COL_TOKEN_ID = "pulse_id_mkvyc8ca",
+	const COL_TOKEN_ID = "pulse_id_mkvyc8ca";
     const COL_MARKETING_ID = "color_mkvpcgta";
     const COL_NEWSLETTER_ID = "color_mkvp9p80";
 
